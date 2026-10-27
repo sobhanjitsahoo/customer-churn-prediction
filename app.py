@@ -1,98 +1,171 @@
 
+
 import streamlit as st
 import pandas as pd
 import joblib
 
-st.set_page_config(page_title="Customer Churn Prediction", page_icon="📊")
-
-st.title("Customer Churn Prediction")
-st.write("Enter customer details to estimate the likelihood of churn.")
+st.set_page_config(
+    page_title="Customer Churn Prediction",
+    page_icon="📊",
+    layout="centered"
+)
 
 @st.cache_resource
 def load_models():
     model = joblib.load("churn_model.pkl")
     encoder = joblib.load("target_encoder.pkl")
-    return model, encoder
+    features = joblib.load("feature_columns.pkl")
+    return model, encoder, features
 
-model, encoder = load_models()
+model, encoder, feature_columns = load_models()
 
-st.success("Model loaded successfully!")
+st.title("📊 Customer Churn Prediction")
+st.write("Estimate whether a customer may leave the company.")
 
-st.subheader("Customer Details")
+with st.form("churn_form"):
+    st.subheader("Customer Information")
 
-with st.form("customer_form"):
-    senior_citizen = st.selectbox("Senior Citizen", [0, 1])
-    tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=12)
-    monthly_charges = st.number_input(
-        "Monthly Charges", min_value=0.0, value=70.0
+    col1, col2 = st.columns(2)
+
+    with col1:
+        senior = st.selectbox("Senior Citizen", ["No", "Yes"])
+        gender = st.selectbox("Gender", ["Female", "Male"])
+        partner = st.selectbox("Has Partner?", ["No", "Yes"])
+        dependents = st.selectbox("Has Dependents?", ["No", "Yes"])
+        phone = st.selectbox("Phone Service", ["No", "Yes"])
+        multiple = st.selectbox(
+            "Multiple Lines",
+            ["No", "No phone service", "Yes"]
+        )
+        internet = st.selectbox(
+            "Internet Service", ["DSL", "Fiber optic", "No"]
+        )
+        security = st.selectbox(
+            "Online Security", ["No", "No internet service", "Yes"]
+        )
+        backup = st.selectbox(
+            "Online Backup", ["No", "No internet service", "Yes"]
+        )
+
+    with col2:
+        device = st.selectbox(
+            "Device Protection", ["No", "No internet service", "Yes"]
+        )
+        support = st.selectbox(
+            "Tech Support", ["No", "No internet service", "Yes"]
+        )
+        tv = st.selectbox(
+            "Streaming TV", ["No", "No internet service", "Yes"]
+        )
+        movies = st.selectbox(
+            "Streaming Movies", ["No", "No internet service", "Yes"]
+        )
+        contract = st.selectbox(
+            "Contract", ["Month-to-month", "One year", "Two year"]
+        )
+        paperless = st.selectbox("Paperless Billing", ["No", "Yes"])
+        payment = st.selectbox(
+            "Payment Method",
+            [
+                "Bank transfer (automatic)",
+                "Credit card (automatic)",
+                "Electronic check",
+                "Mailed check"
+            ]
+        )
+
+    st.subheader("Account Details")
+    tenure = st.slider("Tenure (months)", 0, 72, 12)
+    monthly = st.number_input(
+        "Monthly Charges", min_value=0.0, value=70.0, step=1.0
     )
-    customer_id = st.number_input(
-        "Customer ID code", min_value=0, value=0
-    )
-
-    st.caption(
-        "The categorical fields below use numeric codes from your "
-        "training data. Their category-to-code mappings must match "
-        "your original preprocessing."
-    )
-
-    gender = st.selectbox("Gender code", [0, 1])
-    partner = st.selectbox("Partner code", [0, 1])
-    dependents = st.selectbox("Dependents code", [0, 1])
-    phone_service = st.selectbox("Phone Service code", [0, 1])
-    multiple_lines = st.selectbox("Multiple Lines code", [0, 1, 2])
-    internet_service = st.selectbox("Internet Service code", [0, 1, 2])
-    online_security = st.selectbox("Online Security code", [0, 1, 2])
-    online_backup = st.selectbox("Online Backup code", [0, 1, 2])
-    device_protection = st.selectbox("Device Protection code", [0, 1, 2])
-    tech_support = st.selectbox("Tech Support code", [0, 1, 2])
-    streaming_tv = st.selectbox("Streaming TV code", [0, 1, 2])
-    streaming_movies = st.selectbox("Streaming Movies code", [0, 1, 2])
-    contract = st.selectbox("Contract code", [0, 1, 2])
-    paperless_billing = st.selectbox("Paperless Billing code", [0, 1])
-    payment_method = st.selectbox("Payment Method code", [0, 1, 2, 3])
-
-    total_charges = st.number_input(
-        "Total Charges", min_value=0.0, value=840.0
+    total = st.number_input(
+        "Total Charges", min_value=0.0, value=840.0, step=10.0
     )
 
     submitted = st.form_submit_button("Predict Churn")
 
 if submitted:
-    columns = [
-        "SeniorCitizen", "tenure", "MonthlyCharges", "customerID",
-        "gender", "Partner", "Dependents", "PhoneService",
-        "MultipleLines", "InternetService", "OnlineSecurity",
-        "OnlineBackup", "DeviceProtection", "TechSupport",
-        "StreamingTV", "StreamingMovies", "Contract",
-        "PaperlessBilling", "PaymentMethod", "TotalCharges"
-    ]
+    mappings = {
+        "gender": {"Female": 0, "Male": 1},
+        "Partner": {"No": 0, "Yes": 1},
+        "Dependents": {"No": 0, "Yes": 1},
+        "PhoneService": {"No": 0, "Yes": 1},
+        "MultipleLines": {
+            "No": 0, "No phone service": 1, "Yes": 2
+        },
+        "InternetService": {"DSL": 0, "Fiber optic": 1, "No": 2},
+        "OnlineSecurity": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "OnlineBackup": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "DeviceProtection": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "TechSupport": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "StreamingTV": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "StreamingMovies": {
+            "No": 0, "No internet service": 1, "Yes": 2
+        },
+        "Contract": {
+            "Month-to-month": 0, "One year": 1, "Two year": 2
+        },
+        "PaperlessBilling": {"No": 0, "Yes": 1},
+        "PaymentMethod": {
+            "Bank transfer (automatic)": 0,
+            "Credit card (automatic)": 1,
+            "Electronic check": 2,
+            "Mailed check": 3
+        }
+    }
 
-    values = [[
-        senior_citizen, tenure, monthly_charges, customer_id,
-        gender, partner, dependents, phone_service,
-        multiple_lines, internet_service, online_security,
-        online_backup, device_protection, tech_support,
-        streaming_tv, streaming_movies, contract,
-        paperless_billing, payment_method, total_charges
-    ]]
+    customer = {
+        "SeniorCitizen": int(senior == "Yes"),
+        "tenure": tenure,
+        "MonthlyCharges": monthly,
+        "gender": mappings["gender"][gender],
+        "Partner": mappings["Partner"][partner],
+        "Dependents": mappings["Dependents"][dependents],
+        "PhoneService": mappings["PhoneService"][phone],
+        "MultipleLines": mappings["MultipleLines"][multiple],
+        "InternetService": mappings["InternetService"][internet],
+        "OnlineSecurity": mappings["OnlineSecurity"][security],
+        "OnlineBackup": mappings["OnlineBackup"][backup],
+        "DeviceProtection": mappings["DeviceProtection"][device],
+        "TechSupport": mappings["TechSupport"][support],
+        "StreamingTV": mappings["StreamingTV"][tv],
+        "StreamingMovies": mappings["StreamingMovies"][movies],
+        "Contract": mappings["Contract"][contract],
+        "PaperlessBilling": mappings["PaperlessBilling"][paperless],
+        "PaymentMethod": mappings["PaymentMethod"][payment],
+        "TotalCharges": total
+    }
 
-    customer = pd.DataFrame(values, columns=columns)
+    input_df = pd.DataFrame([customer]).reindex(
+        columns=feature_columns
+    )
 
-    probability = float(model.predict_proba(customer)[0][1])
-    prediction = int(probability >= 0.35)
-    churn_label = encoder.inverse_transform([prediction])[0]
+    probability = float(model.predict_proba(input_df)[0][1])
+    predicted_label = encoder.inverse_transform([
+        int(probability >= 0.35)
+    ])[0]
 
     st.subheader("Prediction Result")
     st.metric("Estimated Churn Probability", f"{probability:.1%}")
 
-    if churn_label == "Yes":
+    if predicted_label == "Yes":
         st.warning("This customer is predicted to churn.")
     else:
         st.success("This customer is predicted not to churn.")
 
     st.progress(min(max(probability, 0.0), 1.0))
     st.caption(
-        "The prediction uses a 0.35 probability threshold. "
-        "Results depend on correct feature encoding and model quality."
+        "The 35% decision threshold is preliminary. "
+        "Probability is a model estimate, not a guarantee."
     )
