@@ -85,45 +85,37 @@ with st.form("churn_form"):
 
     submitted = st.form_submit_button("Predict Churn")
 
+
 if submitted:
-    mappings = {
-        "gender": {"Female": 0, "Male": 1},
-        "Partner": {"No": 0, "Yes": 1},
-        "Dependents": {"No": 0, "Yes": 1},
-        "PhoneService": {"No": 0, "Yes": 1},
-        "MultipleLines": {
-            "No": 0, "No phone service": 1, "Yes": 2
-        },
-        "InternetService": {"DSL": 0, "Fiber optic": 1, "No": 2},
-        "OnlineSecurity": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "OnlineBackup": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "DeviceProtection": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "TechSupport": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "StreamingTV": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "StreamingMovies": {
-            "No": 0, "No internet service": 1, "Yes": 2
-        },
-        "Contract": {
-            "Month-to-month": 0, "One year": 1, "Two year": 2
-        },
-        "PaperlessBilling": {"No": 0, "Yes": 1},
-        "PaymentMethod": {
-            "Bank transfer (automatic)": 0,
-            "Credit card (automatic)": 1,
-            "Electronic check": 2,
-            "Mailed check": 3
-        }
-    }
+    input_df = pd.DataFrame([customer]).reindex(
+        columns=feature_columns
+    )
+
+    if hasattr(model, "feature_names_in_"):
+        input_df = input_df[list(model.feature_names_in_)]
+
+    probability = float(model.predict_proba(input_df)[0][1])
+
+    predicted_label = encoder.inverse_transform([
+        int(probability >= 0.35)
+    ])[0]
+
+    st.subheader("Prediction Result")
+    st.metric(
+        "Estimated Churn Probability",
+        f"{probability:.1%}"
+    )
+
+    if predicted_label == "Yes":
+        st.warning("This customer is predicted to churn.")
+    else:
+        st.success("This customer is predicted not to churn.")
+
+    st.progress(min(max(probability, 0.0), 1.0))
+    st.caption(
+        "The 35% decision threshold is preliminary. "
+        "Probability is a model estimate, not a guarantee."
+    )
 
     customer = {
         "SeniorCitizen": int(senior == "Yes"),
