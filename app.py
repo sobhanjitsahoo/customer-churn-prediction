@@ -151,10 +151,17 @@ if submitted:
         columns=feature_columns
     )
 
-    probability = float(model.predict_proba(input_df)[0][1])
-    predicted_label = encoder.inverse_transform([
-        int(probability >= 0.35)
-    ])[0]
+    
+input_df = pd.DataFrame([customer]).reindex(
+    columns=feature_columns
+)
+
+# Match the exact feature names and order used during training
+if hasattr(model, "feature_names_in_"):
+    input_df = input_df[model.feature_names_in_]
+
+probability = float(model.predict_proba(input_df)[0][1])
+
 
     st.subheader("Prediction Result")
     st.metric("Estimated Churn Probability", f"{probability:.1%}")
